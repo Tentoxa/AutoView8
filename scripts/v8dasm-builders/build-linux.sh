@@ -79,37 +79,25 @@ git fetch --all --tags
 git checkout $V8_VERSION
 gclient sync
 
-# 应用补丁
+# 应用补丁（使用多级退避策略）
 echo "=====[ Applying v8.patch ]====="
 PATCH_FILE="$WORKSPACE_DIR/Disassembler/v8.patch"
+PATCH_LOG="$WORKSPACE_DIR/scripts/v8dasm-builders/patch-utils/patch-state.log"
 
-# 检查补丁文件是否存在
-if [ ! -f "$PATCH_FILE" ]; then
-    echo "ERROR: Patch file not found at $PATCH_FILE"
+# 调用统一的 patch 应用脚本
+bash "$WORKSPACE_DIR/scripts/v8dasm-builders/patch-utils/apply-patch.sh" \
+    "$PATCH_FILE" \
+    "$V8_DIR" \
+    "$PATCH_LOG" \
+    "true"
+
+if [ $? -ne 0 ]; then
+    echo "❌ Patch application failed. Build aborted."
+    echo "请检查日志文件: $PATCH_LOG"
     exit 1
 fi
 
-echo "Patch file exists, attempting to apply..."
-
-# 检查补丁是否已应用
-if git apply --check $PATCH_FILE 2>/dev/null; then
-    git apply --verbose $PATCH_FILE
-    echo "Patch applied successfully"
-elif git apply --check --reverse $PATCH_FILE 2>/dev/null; then
-    echo "Patch already applied, skipping"
-else
-    echo "Attempting 3-way merge..."
-    git apply -3 $PATCH_FILE || {
-        echo "WARNING: Patch failed with conflicts. Attempting manual resolution..."
-        # 尝试忽略空白字符
-        git apply --ignore-whitespace $PATCH_FILE || {
-            echo "ERROR: Failed to apply patch. Showing patch check output:"
-            git apply --check $PATCH_FILE
-            exit 1
-        }
-    }
-    echo "Patch applied with fallback method"
-fi
+echo "✅ Patch applied successfully"
 
 # 配置构建
 echo "=====[ Configuring V8 Build ]====="

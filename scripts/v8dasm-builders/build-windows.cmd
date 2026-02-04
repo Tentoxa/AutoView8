@@ -63,48 +63,26 @@ call git fetch --all --tags
 call git checkout %V8_VERSION%
 call gclient sync
 
-REM 应用补丁
+REM 应用补丁（使用多级退避策略）
 echo =====[ Applying v8.patch ]=====
 set PATCH_FILE=%WORKSPACE_DIR%\Disassembler\v8.patch
+set PATCH_LOG=%WORKSPACE_DIR%\scripts\v8dasm-builders\patch-utils\patch-state.log
 
-echo Checking patch file: %PATCH_FILE%
-if not exist "%PATCH_FILE%" (
-    echo ERROR: Patch file not found at %PATCH_FILE%
+REM 调用统一的 patch 应用脚本
+call "%WORKSPACE_DIR%\scripts\v8dasm-builders\patch-utils\apply-patch.cmd" ^
+    "%PATCH_FILE%" ^
+    "%V8_DIR%" ^
+    "%PATCH_LOG%" ^
+    "true"
+
+if %errorlevel% neq 0 (
+    echo ❌ Patch application failed. Build aborted.
+    echo 请检查日志文件: %PATCH_LOG%
     exit /b 1
 )
 
-echo Patch file exists, attempting to apply...
-git apply --check %PATCH_FILE% >nul 2>&1
-if %errorlevel% equ 0 (
-    echo Applying patch...
-    git apply --verbose %PATCH_FILE%
-    if %errorlevel% equ 0 (
-        echo Patch applied successfully
-    ) else (
-        echo ERROR: Failed to apply patch
-        git apply %PATCH_FILE%
-        exit /b 1
-    )
-) else (
-    echo Patch cannot be applied cleanly, checking if already applied...
-    git apply --check --reverse %PATCH_FILE% >nul 2>&1
-    if %errorlevel% equ 0 (
-        echo Patch already applied, skipping
-    ) else (
-        echo Attempting 3-way merge...
-        git apply -3 %PATCH_FILE% 2>&1
-        if !errorlevel! neq 0 (
-            echo 3-way merge failed, trying with --ignore-whitespace...
-            git apply --ignore-whitespace %PATCH_FILE% 2>&1
-            if !errorlevel! neq 0 (
-                echo ERROR: All patch methods failed. Showing patch check output:
-                git apply --check %PATCH_FILE%
-                exit /b 1
-            )
-        )
-        echo Patch applied with fallback method
-    )
-)
+echo ✅ Patch applied successfully
+
 
 REM 配置构建
 echo =====[ Configuring V8 Build ]=====

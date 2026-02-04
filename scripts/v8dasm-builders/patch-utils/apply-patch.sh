@@ -10,6 +10,7 @@
 #   abort_on_failure - 失败时是否中止 (true/false, 默认: true)
 
 set -e  # 遇到错误时退出（除非显式处理）
+set -o pipefail  # 管道中任何命令失败时返回失败状态
 
 # 参数解析
 PATCH_FILE="$1"

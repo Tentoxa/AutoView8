@@ -10,12 +10,17 @@ echo V8 Version: %V8_VERSION%
 echo Build Args: %BUILD_ARGS%
 echo ==========================================
 
+if "%V8_VERSION%"=="" (
+    echo ERROR: V8 version not specified
+    echo Usage: build-windows.cmd ^<v8_version^> [build_args]
+    exit /b 1
+)
+
 REM Detect environment (GitHub Actions or local)
 if "%GITHUB_WORKSPACE%"=="" (
     echo Detected local environment
     set WORKSPACE_DIR=%~dp0..\..
     set IS_LOCAL=true
-    echo Local environment - skipping dependency install (ensure git, python, Visual Studio/clang are installed)
 ) else (
     echo Detected GitHub Actions environment
     set WORKSPACE_DIR=%GITHUB_WORKSPACE%
@@ -30,41 +35,33 @@ git config --global user.email "v8dasm.builder@localhost"
 git config --global core.autocrlf false
 git config --global core.filemode false
 
+REM Set up paths - V8 source must already be present (fetched by setup-v8-windows.cmd or cache)
 cd %HOMEPATH%
 
-REM Get Depot Tools
 if not exist depot_tools (
-    echo =====[ Getting Depot Tools ]=====
-    powershell -command "Invoke-WebRequest https://storage.googleapis.com/chrome-infra/depot_tools.zip -O depot_tools.zip"
-    powershell -command "Expand-Archive depot_tools.zip -DestinationPath depot_tools"
-    del depot_tools.zip
+    echo ERROR: depot_tools not found at %HOMEPATH%\depot_tools
+    echo Run setup-v8-windows.cmd first, or ensure the cache was restored correctly.
+    exit /b 1
 )
 
 set PATH=%CD%\depot_tools;%PATH%
 set DEPOT_TOOLS_WIN_TOOLCHAIN=0
-call gclient
 
-REM Create working directory
-if not exist v8 mkdir v8
-cd v8
-
-REM Get V8 source
-if not exist v8 (
-    echo =====[ Fetching V8 ]=====
-    call fetch v8
-    echo target_os = ['win'] >> .gclient
+if not exist v8\v8 (
+    echo ERROR: V8 source not found at %HOMEPATH%\v8\v8
+    echo Run setup-v8-windows.cmd first, or ensure the cache was restored correctly.
+    exit /b 1
 )
 
-cd v8
+cd v8\v8
 set V8_DIR=%CD%
 
-REM Checkout specified version
+REM Checkout the specified version (fast on cache hit - just moves HEAD pointer)
 echo =====[ Checking out V8 %V8_VERSION% ]=====
 call git fetch --all --tags
 call git checkout %V8_VERSION%
-call gclient sync
 
-REM Reset to clean state after gclient sync (hooks may modify tracked files like build/util/LASTCHANGE)
+REM Reset to clean state (removes any residue from previous builds or partial patches)
 echo =====[ Resetting to clean state ]=====
 git reset --hard HEAD
 git clean -fd
@@ -74,7 +71,6 @@ echo =====[ Applying v8.patch ]=====
 set PATCH_FILE=%WORKSPACE_DIR%\Disassembler\v8.patch
 set PATCH_LOG=%WORKSPACE_DIR%\scripts\v8dasm-builders\patch-utils\patch-state.log
 
-REM Call the patch application script
 call "%WORKSPACE_DIR%\scripts\v8dasm-builders\patch-utils\apply-patch.cmd" ^
     "%PATCH_FILE%" ^
     "%V8_DIR%" ^
@@ -87,29 +83,26 @@ if %errorlevel% neq 0 (
     exit /b 1
 )
 
-echo ✅ Patch applied successfully
-
+echo Patch applied successfully
 
 REM Configure build
 echo =====[ Configuring V8 Build ]=====
-REM Build GN args string
-set GN_ARGS=target_os=\"win\" target_cpu=\"x64\" is_component_build=false is_debug=false use_custom_libcxx=false v8_monolithic=true v8_static_library=true v8_enable_disassembler=true v8_enable_object_print=true v8_use_external_startup_data=false dcheck_always_on=false symbol_level=0 is_clang=true
+set GN_ARGS=target_os="win" target_cpu="x64" is_component_build=false is_debug=false use_custom_libcxx=false v8_monolithic=true v8_static_library=true v8_enable_disassembler=true v8_enable_object_print=true v8_use_external_startup_data=false dcheck_always_on=false symbol_level=0 is_clang=true
 
-REM Append extra build args if provided
 if not "%BUILD_ARGS%"=="" (
     set GN_ARGS=%GN_ARGS% %BUILD_ARGS%
 )
 
 echo GN Args: %GN_ARGS%
 
-REM Generate build config directly with gn gen
+REM Generate build config
 call gn gen out.gn\x64.release --args="%GN_ARGS%"
 
 REM Build V8 static library
 echo =====[ Building V8 Monolith ]=====
 call ninja -C out.gn\x64.release v8_monolith
 
-REM Compile v8dasm
+REM Compile v8dasm using V8's own bundled clang++
 echo =====[ Compiling v8dasm ]=====
 set DASM_SOURCE=%WORKSPACE_DIR%\Disassembler\v8dasm.cpp
 set OUTPUT_NAME=v8dasm-%V8_VERSION%.exe

@@ -20,7 +20,7 @@ git config --global user.email "v8dasm.builder@localhost"
 git config --global core.autocrlf false
 git config --global core.filemode false
 
-cd %HOMEPATH%
+cd /d %USERPROFILE%
 
 REM Get Depot Tools (skip if already cached)
 if not exist depot_tools (
@@ -32,7 +32,7 @@ if not exist depot_tools (
     echo =====[ Depot Tools already present ]=====
 )
 
-set PATH=%CD%\depot_tools;%PATH%
+set PATH=%USERPROFILE%\depot_tools;%PATH%
 set DEPOT_TOOLS_WIN_TOOLCHAIN=0
 call gclient
 

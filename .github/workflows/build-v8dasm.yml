@@ -101,19 +101,25 @@ jobs:
           path: ${{ env.USERPROFILE }}\depot_tools
           key: depot-tools-windows-v1
 
-      - name: Cache V8 Source
+      - name: Restore V8 Source Cache
         id: cache-v8
-        uses: actions/cache@v4
+        uses: actions/cache/restore@v4
         with:
           path: ${{ env.USERPROFILE }}\v8
           key: v8-source-${{ matrix.version.v8 }}-windows
-          save-always: true
 
       - name: Fetch V8 source
         if: steps.cache-v8.outputs.cache-hit != 'true'
         shell: cmd
         run: |
           call scripts\v8dasm-builders\setup-v8-windows.cmd ${{ matrix.version.v8 }}
+
+      - name: Save V8 Source Cache
+        if: steps.cache-v8.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: ${{ env.USERPROFILE }}\v8
+          key: v8-source-${{ matrix.version.v8 }}-windows
 
       - name: Build v8dasm
         shell: cmd

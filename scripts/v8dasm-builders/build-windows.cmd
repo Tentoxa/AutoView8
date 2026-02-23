@@ -36,24 +36,24 @@ git config --global core.autocrlf false
 git config --global core.filemode false
 
 REM Set up paths - V8 source must already be present (fetched by setup-v8-windows.cmd or cache)
-cd %HOMEPATH%
+cd /d %USERPROFILE%
 
 if not exist depot_tools (
-    echo ERROR: depot_tools not found at %HOMEPATH%\depot_tools
+    echo ERROR: depot_tools not found at %USERPROFILE%\depot_tools
     echo Run setup-v8-windows.cmd first, or ensure the cache was restored correctly.
     exit /b 1
 )
 
-set PATH=%CD%\depot_tools;%PATH%
+set PATH=%USERPROFILE%\depot_tools;%PATH%
 set DEPOT_TOOLS_WIN_TOOLCHAIN=0
 
 if not exist v8\v8 (
-    echo ERROR: V8 source not found at %HOMEPATH%\v8\v8
+    echo ERROR: V8 source not found at %USERPROFILE%\v8\v8
     echo Run setup-v8-windows.cmd first, or ensure the cache was restored correctly.
     exit /b 1
 )
 
-cd v8\v8
+cd /d %USERPROFILE%\v8\v8
 set V8_DIR=%CD%
 
 REM Checkout the specified version (fast on cache hit - just moves HEAD pointer)

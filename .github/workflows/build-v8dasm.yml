@@ -126,10 +126,30 @@ jobs:
           key: v8-source-${{ matrix.version.v8 }}-windows
 
       - name: Build v8dasm
+        id: build
         shell: powershell
         run: |
           cmd /D /E:ON /V:ON /C "call scripts\v8dasm-builders\build-windows.cmd ${{ matrix.version.v8 }} ""${{ matrix.version.args }}"""
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Diagnostics
+        if: always()
+        shell: powershell
+        run: |
+          echo "=== Build step outcome: ${{ steps.build.outcome }} ==="
+          echo "=== Listing C:\Users\runneradmin\v8\v8\ (top level) ==="
+          if (Test-Path "C:\Users\runneradmin\v8\v8") {
+            Get-ChildItem "C:\Users\runneradmin\v8\v8" -Filter "*.exe" | Select-Object Name, Length
+            Get-ChildItem "C:\Users\runneradmin\v8\v8" -Filter "v8dasm*" | Select-Object Name, Length
+          } else {
+            echo "Directory C:\Users\runneradmin\v8\v8 does not exist"
+          }
+          echo "=== Listing C:\Users\runneradmin\v8\v8\out.gn (if exists) ==="
+          if (Test-Path "C:\Users\runneradmin\v8\v8\out.gn") {
+            Get-ChildItem "C:\Users\runneradmin\v8\v8\out.gn" -Recurse -Filter "*.exe" | Select-Object FullName, Length
+          } else {
+            echo "out.gn does not exist - build never ran gn gen"
+          }
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4

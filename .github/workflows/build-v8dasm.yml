@@ -123,6 +123,65 @@ jobs:
           path: C:\Users\runneradmin\v8
           key: v8-source-${{ matrix.version.v8 }}-windows
 
+      - name: Pre-build diagnostics
+        if: always()
+        shell: cmd
+        run: |
+          echo === Git version ===
+          git --version
+          echo.
+          echo === V8 repo local git config ===
+          git -C C:\Users\runneradmin\v8\v8 config --list --local
+          echo.
+          echo === core.hooksPath (if set) ===
+          git -C C:\Users\runneradmin\v8\v8 config --get core.hooksPath
+          if %errorlevel% neq 0 echo (not set)
+          echo.
+          echo === Global git config (hook-related) ===
+          git config --global --list
+          echo.
+          echo === .git\hooks directory listing ===
+          dir C:\Users\runneradmin\v8\v8\.git\hooks 2>&1
+          if %errorlevel% neq 0 echo (directory not found)
+          echo.
+          echo === post-checkout hook content (if exists) ===
+          if exist C:\Users\runneradmin\v8\v8\.git\hooks\post-checkout (
+            type C:\Users\runneradmin\v8\v8\.git\hooks\post-checkout
+          ) else (
+            echo [no post-checkout hook found]
+          )
+          echo.
+          echo === Testing hook disable: renaming .git\hooks ===
+          if exist C:\Users\runneradmin\v8\v8\.git\hooks (
+            ren C:\Users\runneradmin\v8\v8\.git\hooks hooks.diag-test
+            echo Renamed .git\hooks to hooks.diag-test
+          ) else (
+            echo .git\hooks does not exist, nothing to rename
+          )
+          echo.
+          echo === Running git status after hook rename ===
+          git -C C:\Users\runneradmin\v8\v8 status
+          echo git status survived, errorlevel=%errorlevel%
+          echo.
+          echo === Testing git checkout HEAD after hook rename ===
+          git -C C:\Users\runneradmin\v8\v8 checkout HEAD
+          echo git checkout HEAD survived, errorlevel=%errorlevel%
+          echo.
+          echo === Restoring hooks ===
+          if exist C:\Users\runneradmin\v8\v8\.git\hooks.diag-test (
+            ren C:\Users\runneradmin\v8\v8\.git\hooks.diag-test hooks
+            echo Restored .git\hooks
+          ) else (
+            echo hooks.diag-test not found, nothing to restore
+          )
+          echo.
+          echo === Checking for hooks in subdirectories ===
+          if exist C:\Users\runneradmin\v8\v8\build\.git\hooks\post-checkout echo FOUND: build\post-checkout
+          if exist C:\Users\runneradmin\v8\v8\third_party\.git\hooks\post-checkout echo FOUND: third_party\post-checkout
+          if exist C:\Users\runneradmin\v8\v8\tools\.git\hooks\post-checkout echo FOUND: tools\post-checkout
+          echo.
+          echo === Diagnostics complete ===
+
       - name: Build v8dasm
         id: build
         shell: cmd

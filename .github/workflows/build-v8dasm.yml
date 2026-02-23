@@ -84,6 +84,8 @@ jobs:
     name: Windows x64 - V8 ${{ matrix.version.v8 }}
     runs-on: windows-2022
     needs: prepare
+    env:
+      V8_HOME: C:\Users\runneradmin
     strategy:
       matrix: ${{fromJson(needs.prepare.outputs.matrix)}}
       fail-fast: false
@@ -98,14 +100,14 @@ jobs:
       - name: Cache Depot Tools
         uses: actions/cache@v4
         with:
-          path: ${{ env.USERPROFILE }}\depot_tools
+          path: C:\Users\runneradmin\depot_tools
           key: depot-tools-windows-v1
 
       - name: Restore V8 Source Cache
         id: cache-v8
         uses: actions/cache/restore@v4
         with:
-          path: ${{ env.USERPROFILE }}\v8
+          path: C:\Users\runneradmin\v8
           key: v8-source-${{ matrix.version.v8 }}-windows
 
       - name: Fetch V8 source
@@ -119,7 +121,7 @@ jobs:
         if: steps.cache-v8.outputs.cache-hit != 'true' && steps.fetch-v8.outcome == 'success'
         uses: actions/cache/save@v4
         with:
-          path: ${{ env.USERPROFILE }}\v8
+          path: C:\Users\runneradmin\v8
           key: v8-source-${{ matrix.version.v8 }}-windows
 
       - name: Build v8dasm
@@ -131,7 +133,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: v8dasm-windows-x64-v${{ matrix.version.v8 }}
-          path: ${{ env.USERPROFILE }}\v8\v8\v8dasm-${{ matrix.version.v8 }}.exe
+          path: C:\Users\runneradmin\v8\v8\v8dasm-${{ matrix.version.v8 }}.exe
           retention-days: 30
 
   release:

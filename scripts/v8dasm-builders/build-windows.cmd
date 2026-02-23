@@ -70,14 +70,19 @@ REM Apply patch (multi-level fallback strategy)
 echo =====[ Applying v8.patch ]=====
 set PATCH_FILE=%WORKSPACE_DIR%\Disassembler\v8.patch
 set PATCH_LOG=%WORKSPACE_DIR%\scripts\v8dasm-builders\patch-utils\patch-state.log
+set APPLY_PATCH=%WORKSPACE_DIR%\scripts\v8dasm-builders\patch-utils\apply-patch.cmd
 
-call "%WORKSPACE_DIR%\scripts\v8dasm-builders\patch-utils\apply-patch.cmd" ^
-    "%PATCH_FILE%" ^
-    "%V8_DIR%" ^
-    "%PATCH_LOG%" ^
-    "true"
+echo Patch file: %PATCH_FILE%
+echo V8 dir:     %V8_DIR%
+echo Log file:   %PATCH_LOG%
+echo Script:     %APPLY_PATCH%
 
-if %errorlevel% neq 0 (
+@echo on
+call "%APPLY_PATCH%" "%PATCH_FILE%" "%V8_DIR%" "%PATCH_LOG%" "true"
+set PATCH_RESULT=%errorlevel%
+@echo off
+
+if %PATCH_RESULT% neq 0 (
     echo ERROR: Patch application failed. Build aborted.
     echo Check log file: %PATCH_LOG%
     exit /b 1

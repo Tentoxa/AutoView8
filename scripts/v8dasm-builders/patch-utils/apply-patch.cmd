@@ -69,26 +69,7 @@ echo 时间戳: %date% %time%
 echo.
 
 REM 第0级：强制重置到干净状态
-:reset_to_clean_state
-echo [第0级] 重置 V8 仓库到干净状态...
-echo [第0级] 重置 V8 仓库到干净状态... >> "%LOG_FILE%"
-cd /d "%V8_DIR%"
-
-REM 检查是否有未提交的更改
-git diff --quiet >nul 2>&1
-if errorlevel 1 (
-    echo [RESET] 检测到未提交的更改，正在重置...
-    echo [RESET] 检测到未提交的更改，正在重置... >> "%LOG_FILE%"
-    git reset --hard HEAD >> "%LOG_FILE%" 2>&1
-    git clean -fd >> "%LOG_FILE%" 2>&1
-    echo [RESET] ✅ 仓库已重置到干净状态
-    echo [RESET] ✅ 仓库已重置到干净状态 >> "%LOG_FILE%"
-) else (
-    echo [RESET] ✅ 仓库已经是干净状态
-    echo [RESET] ✅ 仓库已经是干净状态 >> "%LOG_FILE%"
-)
-echo.
-echo. >> "%LOG_FILE%"
+call :reset_to_clean_state
 
 REM 检查 patch 是否已经应用（反向检查）
 :check_already_applied
@@ -231,6 +212,32 @@ echo. >> "%LOG_FILE%"
 
 REM 所有方法都失败
 :all_failed
+goto :all_failed_body
+
+REM 第0级子例程：重置 V8 仓库到干净状态
+:reset_to_clean_state
+echo [第0级] 重置 V8 仓库到干净状态...
+echo [第0级] 重置 V8 仓库到干净状态... >> "%LOG_FILE%"
+cd /d "%V8_DIR%"
+
+REM 检查是否有未提交的更改
+git diff --quiet >nul 2>&1
+if errorlevel 1 (
+    echo [RESET] 检测到未提交的更改，正在重置...
+    echo [RESET] 检测到未提交的更改，正在重置... >> "%LOG_FILE%"
+    git reset --hard HEAD >> "%LOG_FILE%" 2>&1
+    git clean -fd >> "%LOG_FILE%" 2>&1
+    echo [RESET] 仓库已重置到干净状态
+    echo [RESET] 仓库已重置到干净状态 >> "%LOG_FILE%"
+) else (
+    echo [RESET] 仓库已经是干净状态
+    echo [RESET] 仓库已经是干净状态 >> "%LOG_FILE%"
+)
+echo.
+echo. >> "%LOG_FILE%"
+goto :eof
+
+:all_failed_body
 echo.
 echo ========================================
 echo ❌ 失败: 所有 patch 应用方法都失败了

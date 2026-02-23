@@ -113,10 +113,8 @@ jobs:
       - name: Fetch V8 source
         if: steps.cache-v8.outputs.cache-hit != 'true'
         id: fetch-v8
-        shell: pwsh
-        run: |
-          $proc = Start-Process -FilePath "cmd.exe" -ArgumentList '/D /E:ON /V:ON /C "call scripts\v8dasm-builders\setup-v8-windows.cmd ${{ matrix.version.v8 }}"' -Wait -PassThru -NoNewWindow
-          if ($proc.ExitCode -ne 0) { exit $proc.ExitCode }
+        shell: cmd
+        run: call scripts\v8dasm-builders\setup-v8-windows.cmd ${{ matrix.version.v8 }}
 
       - name: Save V8 Source Cache
         if: steps.cache-v8.outputs.cache-hit != 'true' && steps.fetch-v8.outcome == 'success'
@@ -127,10 +125,8 @@ jobs:
 
       - name: Build v8dasm
         id: build
-        shell: pwsh
-        run: |
-          $proc = Start-Process -FilePath "cmd.exe" -ArgumentList '/D /E:ON /V:ON /C "call scripts\v8dasm-builders\build-windows.cmd ${{ matrix.version.v8 }} ${{ matrix.version.args }}"' -Wait -PassThru -NoNewWindow
-          if ($proc.ExitCode -ne 0) { exit $proc.ExitCode }
+        shell: cmd
+        run: call scripts\v8dasm-builders\build-windows.cmd ${{ matrix.version.v8 }} "${{ matrix.version.args }}"
 
       - name: Diagnostics
         if: always()

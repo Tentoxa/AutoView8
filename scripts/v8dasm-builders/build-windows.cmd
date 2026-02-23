@@ -20,11 +20,9 @@ REM Detect environment (GitHub Actions or local)
 if "%GITHUB_WORKSPACE%"=="" (
     echo Detected local environment
     set WORKSPACE_DIR=%~dp0..\..
-    set IS_LOCAL=true
 ) else (
     echo Detected GitHub Actions environment
     set WORKSPACE_DIR=%GITHUB_WORKSPACE%
-    set IS_LOCAL=false
 )
 
 echo Workspace: %WORKSPACE_DIR%
@@ -35,12 +33,12 @@ git config --global user.email "v8dasm.builder@localhost"
 git config --global core.autocrlf false
 git config --global core.filemode false
 
-REM Set up paths - V8 source must already be present (fetched by setup-v8-windows.cmd or cache)
+REM Validate that V8 source and depot_tools are present
 cd /d %USERPROFILE%
 
 if not exist depot_tools (
     echo ERROR: depot_tools not found at %USERPROFILE%\depot_tools
-    echo Run setup-v8-windows.cmd first, or ensure the cache was restored correctly.
+    echo Run setup-v8-windows.cmd first or ensure the cache was restored.
     exit /b 1
 )
 
@@ -49,21 +47,38 @@ set DEPOT_TOOLS_WIN_TOOLCHAIN=0
 
 if not exist v8\v8 (
     echo ERROR: V8 source not found at %USERPROFILE%\v8\v8
-    echo Run setup-v8-windows.cmd first, or ensure the cache was restored correctly.
+    echo Run setup-v8-windows.cmd first or ensure the cache was restored.
     exit /b 1
 )
 
 cd /d %USERPROFILE%\v8\v8
 set V8_DIR=%CD%
 
-REM Checkout the specified version (fast on cache hit - just moves HEAD pointer)
+REM ============================================================
+REM Disable git hooks before any git operations.
+REM V8's post-checkout hook (installed by gclient/depot_tools)
+REM calls 'exit' which terminates the entire cmd.exe process
+REM instead of just the hook subprocess.
+REM ============================================================
+if exist .git\hooks (
+    echo Disabling git hooks...
+    ren .git\hooks hooks.disabled
+)
+
+REM Checkout the specified version
 echo =====[ Checking out V8 %V8_VERSION% ]=====
 git -c advice.detachedHead=false checkout %V8_VERSION%
 
-REM Reset to clean state (removes any residue from previous builds or partial patches)
+REM Reset to clean state (removes residue from previous builds or partial patches)
 echo =====[ Resetting to clean state ]=====
 git reset --hard HEAD
 git clean -ffd
+
+REM Re-enable git hooks
+if exist .git\hooks.disabled (
+    echo Re-enabling git hooks...
+    ren .git\hooks.disabled hooks
+)
 
 REM Apply patch (multi-level fallback strategy)
 echo =====[ Applying v8.patch ]=====
@@ -77,14 +92,11 @@ echo Log file:   %PATCH_LOG%
 echo Script:     %APPLY_PATCH%
 
 call "%APPLY_PATCH%" "%PATCH_FILE%" "%V8_DIR%" "%PATCH_LOG%" "true"
-set PATCH_RESULT=%errorlevel%
-
-if %PATCH_RESULT% neq 0 (
+if !errorlevel! neq 0 (
     echo ERROR: Patch application failed. Build aborted.
     echo Check log file: %PATCH_LOG%
     exit /b 1
 )
-
 echo Patch applied successfully
 
 REM Configure build
@@ -92,19 +104,25 @@ echo =====[ Configuring V8 Build ]=====
 set GN_ARGS=target_os="win" target_cpu="x64" is_component_build=false is_debug=false use_custom_libcxx=false v8_monolithic=true v8_static_library=true v8_enable_disassembler=true v8_enable_object_print=true v8_use_external_startup_data=false dcheck_always_on=false symbol_level=0 is_clang=true
 
 if not "%BUILD_ARGS%"=="" (
-    set GN_ARGS=%GN_ARGS% %BUILD_ARGS%
+    set GN_ARGS=!GN_ARGS! %BUILD_ARGS%
 )
 
-echo GN Args: %GN_ARGS%
+echo GN Args: !GN_ARGS!
 
 REM Generate build config
-call gn gen out.gn\x64.release --args="%GN_ARGS%"
-if %errorlevel% neq 0 ( echo ERROR: gn gen failed & exit /b 1 )
+call gn gen out.gn\x64.release --args="!GN_ARGS!"
+if !errorlevel! neq 0 (
+    echo ERROR: gn gen failed
+    exit /b 1
+)
 
 REM Build V8 static library
 echo =====[ Building V8 Monolith ]=====
 call ninja -C out.gn\x64.release v8_monolith
-if %errorlevel% neq 0 ( echo ERROR: ninja build failed & exit /b 1 )
+if !errorlevel! neq 0 (
+    echo ERROR: ninja build failed
+    exit /b 1
+)
 
 REM Compile v8dasm using V8's own bundled clang++
 echo =====[ Compiling v8dasm ]=====
@@ -112,7 +130,7 @@ set DASM_SOURCE=%WORKSPACE_DIR%\Disassembler\v8dasm.cpp
 set OUTPUT_NAME=v8dasm-%V8_VERSION%.exe
 set CLANG_EXE=third_party\llvm-build\Release+Asserts\bin\clang++.exe
 
-%CLANG_EXE% %DASM_SOURCE% ^
+!CLANG_EXE! !DASM_SOURCE! ^
     -std=c++20 ^
     -O2 ^
     -Iinclude ^
@@ -124,18 +142,21 @@ set CLANG_EXE=third_party\llvm-build\Release+Asserts\bin\clang++.exe
     -lwinmm ^
     -lAdvAPI32 ^
     -luser32 ^
-    -o %OUTPUT_NAME%
-if %errorlevel% neq 0 ( echo ERROR: clang++ compile failed & exit /b 1 )
+    -o !OUTPUT_NAME!
+if !errorlevel! neq 0 (
+    echo ERROR: clang++ compile failed
+    exit /b 1
+)
 
-REM Verify compilation
-if exist %OUTPUT_NAME% (
+REM Verify the binary was produced
+if exist !OUTPUT_NAME! (
     echo =====[ Build Successful ]=====
-    dir %OUTPUT_NAME%
+    dir !OUTPUT_NAME!
     echo.
-    echo Build successful: %OUTPUT_NAME%
-    echo Location: %CD%\%OUTPUT_NAME%
+    echo Build successful: !OUTPUT_NAME!
+    echo Location: %CD%\!OUTPUT_NAME!
 ) else (
-    echo ERROR: %OUTPUT_NAME% not found!
+    echo ERROR: !OUTPUT_NAME! not found after compilation!
     exit /b 1
 )
 

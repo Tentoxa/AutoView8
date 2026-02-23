@@ -51,10 +51,27 @@ if not exist v8 (
 
 cd v8
 
+REM ============================================================
+REM Disable git hooks before any git operations.
+REM V8's post-checkout hook (installed by gclient/depot_tools)
+REM calls 'exit' which terminates the entire cmd.exe process
+REM instead of just the hook subprocess.
+REM ============================================================
+if exist .git\hooks (
+    echo Disabling git hooks...
+    ren .git\hooks hooks.disabled
+)
+
 REM Checkout specified version
 echo =====[ Checking out V8 %V8_VERSION% ]=====
 git fetch --all --tags
 git -c advice.detachedHead=false checkout %V8_VERSION%
+
+REM Re-enable git hooks before gclient sync (sync may need them for setup)
+if exist .git\hooks.disabled (
+    echo Re-enabling git hooks...
+    ren .git\hooks.disabled hooks
+)
 
 REM Sync all dependencies for this version
 echo =====[ Running gclient sync ]=====

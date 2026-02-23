@@ -1,4 +1,4 @@
-@echo off
+@echo on
 setlocal enabledelayedexpansion
 
 set V8_VERSION=%1
@@ -58,13 +58,13 @@ set V8_DIR=%CD%
 
 REM Checkout the specified version (fast on cache hit - just moves HEAD pointer)
 echo =====[ Checking out V8 %V8_VERSION% ]=====
-call git fetch --all --tags
-call git checkout %V8_VERSION%
+git fetch --all --tags
+git checkout %V8_VERSION%
 
 REM Reset to clean state (removes any residue from previous builds or partial patches)
 echo =====[ Resetting to clean state ]=====
 git reset --hard HEAD
-git clean -fd
+git clean -ffd
 
 REM Apply patch (multi-level fallback strategy)
 echo =====[ Applying v8.patch ]=====
@@ -77,10 +77,8 @@ echo V8 dir:     %V8_DIR%
 echo Log file:   %PATCH_LOG%
 echo Script:     %APPLY_PATCH%
 
-@echo on
 call "%APPLY_PATCH%" "%PATCH_FILE%" "%V8_DIR%" "%PATCH_LOG%" "true"
 set PATCH_RESULT=%errorlevel%
-@echo off
 
 if %PATCH_RESULT% neq 0 (
     echo ERROR: Patch application failed. Build aborted.
@@ -102,10 +100,12 @@ echo GN Args: %GN_ARGS%
 
 REM Generate build config
 call gn gen out.gn\x64.release --args="%GN_ARGS%"
+if %errorlevel% neq 0 ( echo ERROR: gn gen failed & exit /b 1 )
 
 REM Build V8 static library
 echo =====[ Building V8 Monolith ]=====
 call ninja -C out.gn\x64.release v8_monolith
+if %errorlevel% neq 0 ( echo ERROR: ninja build failed & exit /b 1 )
 
 REM Compile v8dasm using V8's own bundled clang++
 echo =====[ Compiling v8dasm ]=====
@@ -126,6 +126,7 @@ set CLANG_EXE=third_party\llvm-build\Release+Asserts\bin\clang++.exe
     -lAdvAPI32 ^
     -luser32 ^
     -o %OUTPUT_NAME%
+if %errorlevel% neq 0 ( echo ERROR: clang++ compile failed & exit /b 1 )
 
 REM Verify compilation
 if exist %OUTPUT_NAME% (

@@ -31,6 +31,8 @@ jobs:
         run: |
           if [ -n "${{ github.event.inputs.v8_version }}" ]; then
             echo "matrix={\"version\":[{\"v8\":\"${{ github.event.inputs.v8_version }}\",\"args\":\"v8_enable_pointer_compression=false\"}]}" >> $GITHUB_OUTPUT
+          elif [ "${{ github.event_name }}" == "push" ]; then
+            echo "matrix={\"version\":[{\"v8\":\"12.6.228.21\",\"args\":\"v8_enable_pointer_compression=false\"}]}" >> $GITHUB_OUTPUT
           else
             VERSIONS=$(jq -c '[.versions[] | {v8: .v8_version, node: .node_version, args: .build_args}]' configs/v8-versions.json)
             echo "matrix={\"version\":$VERSIONS}" >> $GITHUB_OUTPUT
@@ -156,26 +158,26 @@ jobs:
       - name: Generate release notes
         run: |
           cat > release_notes.md << 'EOF'
-          ## V8 Disassembler 二进制文件
+          ## V8 Disassembler Binaries
 
-          此版本包含多个平台和 V8 版本的预编译 v8dasm 二进制文件。
+          This release contains pre-built v8dasm binaries for multiple platforms and V8 versions.
 
-          ### 支持的 V8 版本:
-          - **11.3.244.8** (Node.js v20.x)
+          ### Supported V8 versions:
+          - **12.6.228.21**
 
-          ### 支持的平台:
+          ### Supported platforms:
           - macOS Apple Silicon (ARM64)
           - Windows x64
 
-          ### 使用方法:
-          下载适合您平台和 V8 版本的二进制文件，然后配合 View8 使用:
+          ### Usage:
+          Download the binary for your platform and V8 version, then use it with View8:
           ```bash
           python view8.py input.jsc output.js --path ./v8dasm
           ```
 
-          ### 构建信息:
-          - 构建自 commit: ${{ github.sha }}
-          - 构建时间: $(date -u +"%Y-%m-%d %H:%M:%S UTC")
+          ### Build info:
+          - Built from commit: ${{ github.sha }}
+          - Build time: $(date -u +"%Y-%m-%d %H:%M:%S UTC")
           EOF
 
       - name: Create Release

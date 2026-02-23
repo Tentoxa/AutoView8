@@ -110,12 +110,13 @@ jobs:
 
       - name: Fetch V8 source
         if: steps.cache-v8.outputs.cache-hit != 'true'
+        id: fetch-v8
         shell: cmd
         run: |
           call scripts\v8dasm-builders\setup-v8-windows.cmd ${{ matrix.version.v8 }}
 
       - name: Save V8 Source Cache
-        if: steps.cache-v8.outputs.cache-hit != 'true'
+        if: steps.cache-v8.outputs.cache-hit != 'true' && steps.fetch-v8.outcome == 'success'
         uses: actions/cache/save@v4
         with:
           path: ${{ env.USERPROFILE }}\v8

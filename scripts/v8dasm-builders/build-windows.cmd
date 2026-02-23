@@ -58,7 +58,6 @@ set V8_DIR=%CD%
 
 REM Checkout the specified version (fast on cache hit - just moves HEAD pointer)
 echo =====[ Checking out V8 %V8_VERSION% ]=====
-git fetch --all --tags
 git checkout %V8_VERSION%
 
 REM Reset to clean state (removes any residue from previous builds or partial patches)

@@ -53,10 +53,8 @@ cd v8
 
 REM Checkout specified version
 echo =====[ Checking out V8 %V8_VERSION% ]=====
-git fetch --all --tags 2>&1
-cmd /c "exit /b 0"
-git -c advice.detachedHead=false checkout %V8_VERSION% 2>&1
-cmd /c "exit /b 0"
+git fetch --all --tags
+git -c advice.detachedHead=false checkout %V8_VERSION%
 
 REM Sync all dependencies for this version
 echo =====[ Running gclient sync ]=====
@@ -65,10 +63,10 @@ call gclient sync
 REM Reset to clean state after gclient sync
 REM (hooks may modify tracked files like build/util/LASTCHANGE)
 echo =====[ Resetting to clean state after sync ]=====
-git reset --hard HEAD 2>&1
-cmd /c "exit /b 0"
-git clean -fd 2>&1
-cmd /c "exit /b 0"
+git reset --hard HEAD
+git clean -fd
 
 echo =====[ V8 Source Setup Complete ]=====
 echo V8 %V8_VERSION% is ready at %CD%
+
+exit /b 0

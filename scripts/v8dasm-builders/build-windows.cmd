@@ -2,7 +2,7 @@
 setlocal enabledelayedexpansion
 
 set V8_VERSION=%1
-set BUILD_ARGS=%2
+set BUILD_ARGS=%~2
 
 echo ==========================================
 echo Building v8dasm for Windows x64
@@ -58,15 +58,12 @@ set V8_DIR=%CD%
 
 REM Checkout the specified version (fast on cache hit - just moves HEAD pointer)
 echo =====[ Checking out V8 %V8_VERSION% ]=====
-git -c advice.detachedHead=false checkout %V8_VERSION% 2>&1
-cmd /c "exit /b 0"
+git -c advice.detachedHead=false checkout %V8_VERSION%
 
 REM Reset to clean state (removes any residue from previous builds or partial patches)
 echo =====[ Resetting to clean state ]=====
-git reset --hard HEAD 2>&1
-cmd /c "exit /b 0"
-git clean -ffd 2>&1
-cmd /c "exit /b 0"
+git reset --hard HEAD
+git clean -ffd
 
 REM Apply patch (multi-level fallback strategy)
 echo =====[ Applying v8.patch ]=====
@@ -141,3 +138,5 @@ if exist %OUTPUT_NAME% (
     echo ERROR: %OUTPUT_NAME% not found!
     exit /b 1
 )
+
+exit /b 0

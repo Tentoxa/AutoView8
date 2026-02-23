@@ -58,12 +58,15 @@ set V8_DIR=%CD%
 
 REM Checkout the specified version (fast on cache hit - just moves HEAD pointer)
 echo =====[ Checking out V8 %V8_VERSION% ]=====
-git checkout %V8_VERSION%
+git -c advice.detachedHead=false checkout %V8_VERSION%
+echo git checkout exited with: %errorlevel%
 
 REM Reset to clean state (removes any residue from previous builds or partial patches)
 echo =====[ Resetting to clean state ]=====
 git reset --hard HEAD
+echo git reset exited with: %errorlevel%
 git clean -ffd
+echo git clean exited with: %errorlevel%
 
 REM Apply patch (multi-level fallback strategy)
 echo =====[ Applying v8.patch ]=====

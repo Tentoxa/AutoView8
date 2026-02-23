@@ -211,24 +211,16 @@ REM All methods failed
 :all_failed
 goto :all_failed_body
 
-REM Level 0 subroutine: Reset V8 repo to clean state
+REM Level 0 subroutine: Reset V8 repo to clean state (unconditional)
 :reset_to_clean_state
 echo [RESET] Resetting V8 repository to clean state...
 echo [RESET] Resetting V8 repository to clean state... >> "%LOG_FILE%"
 cd /d "%V8_DIR%"
 
-git diff --quiet >nul 2>&1
-if errorlevel 1 (
-    echo [RESET] Uncommitted changes detected, resetting...
-    echo [RESET] Uncommitted changes detected, resetting... >> "%LOG_FILE%"
-    git reset --hard HEAD >> "%LOG_FILE%" 2>&1
-    git clean -fd >> "%LOG_FILE%" 2>&1
-    echo [RESET] Repository reset to clean state
-    echo [RESET] Repository reset to clean state >> "%LOG_FILE%"
-) else (
-    echo [RESET] Repository already clean
-    echo [RESET] Repository already clean >> "%LOG_FILE%"
-)
+git reset --hard HEAD >> "%LOG_FILE%" 2>&1
+git clean -fd >> "%LOG_FILE%" 2>&1
+echo [RESET] Repository reset to clean state
+echo [RESET] Repository reset to clean state >> "%LOG_FILE%"
 echo.
 echo. >> "%LOG_FILE%"
 goto :eof
